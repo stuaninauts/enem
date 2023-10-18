@@ -9,16 +9,16 @@ dict_areas = {
     'humanas': 'Ciências Humanas',
     'matematica': 'Matemática',
     'natureza': 'Ciências da Natureza'
-
 }
 
+# show the checkbox_areas if 'Escolher área(s)' is pressed in radio_areas
 def show_checkbox_areas():
     return [
         ui.input_checkbox_group(
             id="checkbox_areas",
             label="Áreas:",
             choices=dict_areas,
-            selected=dict_areas,
+            selected=list(dict_areas.keys()),
         ),
     ]
 
@@ -51,17 +51,37 @@ def server(input, output, session):
 
     def build_plot():
         fig, ax = plt.subplots()
-        colunas_melhora = [f'melhora_{area}' for area in list(input.checkbox_areas())]
-        result = df[['edicao'] + list(input.checkbox_areas()) + colunas_melhora]
-        print(result)
-            
-        for area in input.checkbox_areas():
-            if area == 'matemática':
-                area = 'matematica'
+        result = df
 
+        if input.radio_area() == '0': # Redação is choosed
+            result = result[['edicao', 'redacao']]
+            result = result.dropna(subset='redacao')
             x = result['edicao']
-            y = result[area]
-            ax.plot(x, y, label='area')
+            y = result['redacao']
+            ax.plot(x, y, label='Redação', marker='o')
+
+            ax.set_yticks(range(720, 1001, 40))
+            ax.set_ylabel('pontuacao')
+
+        else: # Other areas are choosed
+            lista_areas_selecionadas = list(input.checkbox_areas())
+            colunas_melhora = [f'melhora_{area}' for area in lista_areas_selecionadas]
+            result = result[['edicao'] + lista_areas_selecionadas + colunas_melhora]
+            result = result.dropna(subset=lista_areas_selecionadas)
+
+            for area in input.checkbox_areas():
+                x = result['edicao']
+                y = result[area]
+                ax.plot(x, y, label=dict_areas[area], marker='o')
+
+            ax.set_ylabel('acertos')
+            ax.set_yticks(range(20, 46, 2))
+            ax.set_aspect(0.2)
+        
+        ax.tick_params(axis='x', labelrotation=55, bottom=True)
+        ax.grid(axis='both', color='0.75')
+        ax.set_title('titulo')        
+        ax.set_xlabel('edicao')
 
         return fig
     
