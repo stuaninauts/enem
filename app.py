@@ -1,28 +1,38 @@
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
+
 import pandas as pd
 from shiny import App, Inputs, Outputs, Session, render, ui, reactive
 
 df = pd.read_csv("enem_acertos_melhoras.csv")
 
 dict_areas = {
-    'linguagens': 'Linguagens',
-    'humanas': 'Ciências Humanas',
-    'matematica': 'Matemática',
-    'natureza': 'Ciências da Natureza'
+    # name          # beaty name            # color
+    'linguagens':   ['Linguagens',          'tab:red'],
+    'humanas':      ['Ciências Humanas',    'tab:orange'],
+    'matematica':   ['Matemática',          'tab:purple'],
+    'natureza':     ['Ciências da Natureza','tab:green'],
 }
+
+# given color and factor, darken this color with this factor
+def darken_color(cor, fator):
+    color_rgb = mcolors.to_rgb(cor)
+    new_color_rgb = tuple(comp * (1 - fator) for comp in color_rgb)
+    new_color = mcolors.to_hex(new_color_rgb)
+    return new_color
 
 # show the checkbox_areas if 'Escolher área(s)' is pressed in radio_areas
 def show_checkbox_areas():
     return [
         ui.input_checkbox_group(
             id="checkbox_areas",
-            label="Áreas:",
-            choices=dict_areas,
+            label="Escolher análise:",
+            choices={chave: valor[0] for chave, valor in dict_areas.items()},
             selected=list(dict_areas.keys()),
         ),
         ui.input_checkbox(
             id="checkbox_acertos", 
-            label="Comparar acertos passados", 
+            label="Comparar acertos da primeira tentativa", 
             value=False,
         ),
 
@@ -32,8 +42,9 @@ app_ui = ui.page_fluid(
     ui.layout_sidebar(
         ui.panel_sidebar(
             # TODO
-            # Add title
-            # Add context about everything
+            # add title
+            # add context about everything
+            # * cronological order
             ui.input_radio_buttons(
                 id="radio_area", 
                 label="Área:", 
@@ -62,38 +73,62 @@ def server(input, output, session):
         fig, ax = plt.subplots()
         result = df
 
-        if input.radio_area() == '0': # Redação is choosed
+        if input.radio_area() == '0': # redação was choosen
             result = result[['edicao', 'redacao']]
             result = result.dropna(subset='redacao')
             x = result['edicao']
             y = result['redacao']
+
+            ax.set_yticks(range(760, 1001, 40))
+            ax.set_ylabel('pontuacao')
             ax.plot(x, y, label='Redação', marker='o')
 
-            ax.set_yticks(range(720, 1001, 40))
-            ax.set_ylabel('pontuacao')
-
-        else: # Other areas are choosed
+        else: # other areas were choosen
+            # get the list of the choosen areas
             lista_areas_selecionadas = list(input.checkbox_areas())
-            colunas_melhora = [f'melhora_{area}' for area in lista_areas_selecionadas]
-            result = result[['edicao'] + lista_areas_selecionadas + colunas_melhora]
-            result = result.dropna(subset=lista_areas_selecionadas)
 
+            # separate the wished areas and handle with missing values
+            if input.checkbox_acertos():
+                colunas_melhora = [f'melhora_{area}' for area in lista_areas_selecionadas]
+                result = result[['edicao'] + lista_areas_selecionadas + colunas_melhora]
+                result = result.dropna(subset=colunas_melhora)
+                result = result.dropna(subset=lista_areas_selecionadas)
+                # normalize the melhoras columns
+                for area in lista_areas_selecionadas:
+                    # primeira_area is the number of correct answers I had in the first attempt at the simulated exam 
+                    result[f'primeira_{area}'] = result[area] - result[f'melhora_{area}']
+            else:
+                result = result[['edicao'] + lista_areas_selecionadas]
+                result = result.dropna(subset=lista_areas_selecionadas)
+
+            # organize the plots
             for area in input.checkbox_areas():
                 x = result['edicao']
-                y = result[area]
-                print(type(input.checkbox_acertos()))
-                ax.plot(x, y, label=dict_areas[area], marker='o')
-                if input.checkbox_acertos() == True:
-                    # TODO
-                    # Remove missing values
-                    # Calculate diffs
-                    y = result[f'melhora_{area}']
-                    ax.plot(x, y, label=dict_areas[area], marker='o')
+                y1 = result[area]
+                last_try_label = dict_areas[area][0]
+                last_try_color = dict_areas[area][1]
 
+                # plot the first try
+                if input.checkbox_acertos():
+                    y2 = result[f'primeira_{area}']
+                    fst_try_label = last_try_label + ' 1ª tentativa'
+                    fst_try_color = darken_color(last_try_color, 0.5)
+                    ax.plot(x, y2, label=fst_try_label, color=fst_try_color, marker='o')
+                    
+                    # format the last try label (view purposes)
+                    last_try_label += ' 2ª tentativa'
+                
+                # plot the last try
+                ax.plot(x, y1, label=last_try_label, color=dict_areas[area][1], marker='o')
+
+                ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+
+            # local params for area plot
             ax.set_ylabel('acertos')
             ax.set_yticks(range(20, 46, 2))
             ax.set_aspect(0.2)
         
+        # global params for every plot
         ax.tick_params(axis='x', labelrotation=55, bottom=True)
         ax.grid(axis='both', color='0.75')
         ax.set_title('titulo')        
