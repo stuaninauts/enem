@@ -20,11 +20,20 @@ def show_checkbox_areas():
             choices=dict_areas,
             selected=list(dict_areas.keys()),
         ),
+        ui.input_checkbox(
+            id="checkbox_acertos", 
+            label="Comparar acertos passados", 
+            value=False,
+        ),
+
     ]
 
 app_ui = ui.page_fluid(
     ui.layout_sidebar(
         ui.panel_sidebar(
+            # TODO
+            # Add title
+            # Add context about everything
             ui.input_radio_buttons(
                 id="radio_area", 
                 label="Área:", 
@@ -72,7 +81,14 @@ def server(input, output, session):
             for area in input.checkbox_areas():
                 x = result['edicao']
                 y = result[area]
+                print(type(input.checkbox_acertos()))
                 ax.plot(x, y, label=dict_areas[area], marker='o')
+                if input.checkbox_acertos() == True:
+                    # TODO
+                    # Remove missing values
+                    # Calculate diffs
+                    y = result[f'melhora_{area}']
+                    ax.plot(x, y, label=dict_areas[area], marker='o')
 
             ax.set_ylabel('acertos')
             ax.set_yticks(range(20, 46, 2))
