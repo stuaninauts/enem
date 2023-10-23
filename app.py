@@ -4,7 +4,10 @@ import matplotlib.colors as mcolors
 import pandas as pd
 from shiny import App, Inputs, Outputs, Session, render, ui, reactive
 
-df = pd.read_csv("enem_acertos_melhoras.csv")
+# am for acertos e melhoras
+df_am = pd.read_csv("enem_acertos_melhoras.csv")
+# cc for conversao de conhecimento
+df_cc = pd.read_csv("enem_conversao_conhecimento.csv")
 
 dict_areas = {
     # name          # beaty name            # color
@@ -38,28 +41,55 @@ def show_checkbox_areas():
 
     ]
 
-app_ui = ui.page_fluid(
-    ui.layout_sidebar(
-        ui.panel_sidebar(
-            # TODO
-            # add title
-            # add context about everything
-            # * cronological order
-            ui.input_radio_buttons(
-                id="radio_area", 
-                label="Área:", 
-                choices={'0': "Redação", '1': "Escolher área(s)"},
-                selected='1',
+def nav_acertos_melhoras():
+    return [
+        ui.layout_sidebar(
+            ui.panel_sidebar(
+                ui.input_radio_buttons(
+                    id="radio_ordem_am", 
+                    label="Ordem das edições:", 
+                    choices={'0': "Alfabética", '1': "Cronológica por resolução"},
+                    selected='0',
+                ),
+                ui.input_radio_buttons(
+                    id="radio_area", 
+                    label="Área:", 
+                    choices={'0': "Redação", '1': "Escolher área(s)"},
+                    selected='1',
+                ),
+                ui.navset_hidden(
+                    ui.nav(None, "", value='0'),
+                    ui.nav(None, show_checkbox_areas(), value='1'),
+                    id="nav_radio_area",
+                ),    
             ),
-            ui.navset_hidden(
-                ui.nav(None, "", value='0'),
-                ui.nav(None, show_checkbox_areas(), value='1'),
-                id="nav_radio_area",
-            ),    
+            ui.panel_main(
+                ui.output_plot("plot_am"),
+            ),
         ),
-        ui.panel_main(
-            ui.output_plot("plot"),
+    ]
+
+def nav_conversao_conhecimento():
+    return [
+        ui.layout_sidebar(
+            ui.panel_sidebar(
+    
+            ),
+            ui.panel_main(
+                ui.output_plot("plot_cc"),
+            ),
         ),
+
+    ]
+
+app_ui = ui.page_fluid(
+    # TODO
+    # add title
+    # add context about everything
+    # * cronological order
+    ui.navset_tab_card(
+        ui.nav("Análise quantidade de acertos e melhoras", nav_acertos_melhoras()),
+        ui.nav("Análise conversão de conhecimento", nav_conversao_conhecimento()),
     ),
 )
 
@@ -69,9 +99,17 @@ def server(input, output, session):
     def _():
         ui.update_navs("nav_radio_area", selected=input.radio_area())
 
-    def build_plot():
+    def build_plot_am():
         fig, ax = plt.subplots()
-        result = df
+        
+        result = df_am
+        result = result.sort_values('edicao')
+
+
+        if input.radio_ordem_am() == '1':
+            result = result.set_index('edicao')
+            result = result.reindex(index=df_cc['edicao'])
+            result = result.reset_index()
 
         if input.radio_area() == '0': # redação was choosen
             result = result[['edicao', 'redacao']]
@@ -112,7 +150,7 @@ def server(input, output, session):
                 if input.checkbox_acertos():
                     y2 = result[f'primeira_{area}']
                     fst_try_label = last_try_label + ' 1ª tentativa'
-                    fst_try_color = darken_color(last_try_color, 0.5)
+                    fst_try_color = darken_color(last_try_color, 0.3)
                     ax.plot(x, y2, label=fst_try_label, color=fst_try_color, marker='o')
                     
                     # format the last try label (view purposes)
@@ -136,9 +174,20 @@ def server(input, output, session):
 
         return fig
     
+    def build_plot_cc():
+        fig, ax = plt.subplots()
+
+
+        return fig
+
     @output
     @render.plot
-    def plot():
-        build_plot()
+    def plot_am():
+        build_plot_am()
+
+    @output
+    @render.plot
+    def plot_cc():
+        build_plot_cc()
 
 app = App(app_ui, server)
