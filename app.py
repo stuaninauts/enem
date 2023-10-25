@@ -10,11 +10,31 @@ df_am = pd.read_csv("enem_acertos_melhoras.csv")
 df_cc = pd.read_csv("enem_conversao_conhecimento.csv")
 
 dict_areas = {
-    # name          # beaty name            # color
+    # name          # beuaty name            # color
     'linguagens':   ['Linguagens',          'tab:red'],
     'humanas':      ['Ciências Humanas',    'tab:orange'],
     'matematica':   ['Matemática',          'tab:purple'],
     'natureza':     ['Ciências da Natureza','tab:green'],
+}
+
+dict_hum_expandida = {
+    'hist': 'História',
+    'geo': 'Geografia',
+    'filo':   'Filosofia',
+    'socio': 'Sociologia',
+}
+
+dict_nat_expandida = {
+    'quim': 'Química',
+    'fis': 'Física',
+    'bio': 'Biologia',
+}
+
+dict_questoes = {
+    's': 'Questões que eu sabia',
+    's_e':  'Questões que sabia e errei',
+    'ns': 'Questões que eu não sabia',
+    'ns_e': 'Questões que eu não sabia e errei',
 }
 
 # given color and factor, darken this color with this factor
@@ -24,11 +44,12 @@ def darken_color(cor, fator):
     new_color = mcolors.to_hex(new_color_rgb)
     return new_color
 
-# show the checkbox_areas if 'Escolher área(s)' is pressed in radio_areas
+# show the checkbox_areas_am if 'Escolher área(s)' is pressed in radio_areas
+# in acertos e melhora tab
 def show_checkbox_areas():
     return [
         ui.input_checkbox_group(
-            id="checkbox_areas",
+            id="checkbox_areas_am",
             label="Escolher análise:",
             choices={chave: valor[0] for chave, valor in dict_areas.items()},
             selected=list(dict_areas.keys()),
@@ -41,6 +62,7 @@ def show_checkbox_areas():
 
     ]
 
+# nav that show acertos e melhoras related to df_am
 def nav_acertos_melhoras():
     return [
         ui.layout_sidebar(
@@ -65,18 +87,44 @@ def nav_acertos_melhoras():
             ),
             ui.panel_main(
                 ui.output_plot("plot_am"),
+                # TOOO
+                # add details about the plot
             ),
         ),
     ]
 
+# nav that show conversao de conhecimento related to df_cc
 def nav_conversao_conhecimento():
     return [
+        # TODO
+        # explain ling and context
         ui.layout_sidebar(
             ui.panel_sidebar(
-    
+                ui.input_radio_buttons(
+                    id="radio_ordem_cc", 
+                    label="Ordem das edições:", 
+                    choices={'0': "Alfabética", '1': "Cronológica por resolução"},
+                    selected='0',
+                ), 
+                ui.input_checkbox_group(
+                    id="checkbox_areas_cc",
+                    label="Escolher área:",
+                    # list choices using dict_areas from 1-3 index
+                    choices={chave: valor[0] for chave, valor in dict_areas.items() if list(dict_areas.keys()).index(chave) > 0}, 
+                    selected=list(dict_areas.keys()),
+                ),
+                ui.input_checkbox_group(
+                    id="checkbox_questoes_cc",
+                    label="Escolher tipos de questões:",
+                    choices=dict_questoes, 
+                    selected=list(dict_questoes.keys()),
+                ),    
+
             ),
             ui.panel_main(
                 ui.output_plot("plot_cc"),
+                # TODO
+                # add details like acertos de questoes que eu nao sabia
             ),
         ),
 
@@ -86,7 +134,6 @@ app_ui = ui.page_fluid(
     # TODO
     # add title
     # add context about everything
-    # * cronological order
     ui.navset_tab_card(
         ui.nav("Análise quantidade de acertos e melhoras", nav_acertos_melhoras()),
         ui.nav("Análise conversão de conhecimento", nav_conversao_conhecimento()),
@@ -96,18 +143,20 @@ app_ui = ui.page_fluid(
 def server(input, output, session):
     @reactive.Effect
     @reactive.event(input.radio_area)
+    # expand the options if redacao is not choosen
     def _():
         ui.update_navs("nav_radio_area", selected=input.radio_area())
 
+    # build the plot for Acertos e Melhoras tab
     def build_plot_am():
         fig, ax = plt.subplots()
         
         result = df_am
         result = result.sort_values('edicao')
 
-
-        if input.radio_ordem_am() == '1':
+        if input.radio_ordem_am() == '1': # == 'Ordem cronológica por resolução
             result = result.set_index('edicao')
+            # df_cc 'edicao' is sorted for this case
             result = result.reindex(index=df_cc['edicao'])
             result = result.reset_index()
 
@@ -123,7 +172,7 @@ def server(input, output, session):
 
         else: # other areas were choosen
             # get the list of the choosen areas
-            lista_areas_selecionadas = list(input.checkbox_areas())
+            lista_areas_selecionadas = list(input.checkbox_areas_am())
 
             # separate the wished areas and handle with missing values
             if input.checkbox_acertos():
@@ -140,7 +189,7 @@ def server(input, output, session):
                 result = result.dropna(subset=lista_areas_selecionadas)
 
             # organize the plots
-            for area in input.checkbox_areas():
+            for area in input.checkbox_areas_am():
                 x = result['edicao']
                 y1 = result[area]
                 last_try_label = dict_areas[area][0]
@@ -174,9 +223,49 @@ def server(input, output, session):
 
         return fig
     
+    # build the plot for Conversão de Conhecimento tab
     def build_plot_cc():
         fig, ax = plt.subplots()
 
+        result = df_cc
+        
+        if input.radio_ordem_cc() == '0':
+            result = result.set_index('edicao')
+            result = result.sort_index()
+
+        # select the wanted columns and drop nan values
+        colunas_selecionadas = []
+        for area in list(input.checkbox_areas_cc()):
+            # important prefix to individualize areas
+            area_prefix = area[:3] 
+            # select the columns for the choosen areas 
+            colunas_area = [coluna for coluna in result.columns if coluna.startswith(area_prefix)]
+            # remove rows with nan values
+            result = result.dropna(subset=colunas_area)
+
+            for tipo_questao in list(input.checkbox_questoes_cc()):
+                # combine the selected areas with the type of question
+                # result the final columns to plot
+                colunas_selecionadas.append(coluna for coluna in colunas_area if coluna.endswith('_' + tipo_questao)) # modify generator
+        
+        x = result.index # result['edicao']
+        for coluna in colunas_selecionadas:
+            y = result[coluna] 
+            ax.plot(x, y, marker='o')  
+
+            
+
+
+        ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
+    
+        ax.set_ylabel('questões')
+        ax.set_yticks(range(20, 46, 2)) # modify later min and max
+        ax.set_aspect(0.2)
+
+        ax.tick_params(axis='x', labelrotation=55, bottom=True)
+        ax.grid(axis='both', color='0.75')
+        ax.set_title('titulo')        
+        ax.set_xlabel('edicao')      
 
         return fig
 
