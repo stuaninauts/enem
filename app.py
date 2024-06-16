@@ -134,17 +134,6 @@ def nav_acertos_melhoras():
                 ui.card(
                     ui.card_header(
                         "Quantidade de acertos vs edição",
-                        ui.popover(
-                            ICONS["ellipsis"],
-                            ui.input_radio_buttons(
-                                "scatter_color",
-                                None,
-                                ["none", "sex", "smoker", "day", "time"],
-                                inline=True,
-                            ),
-                            title="Add a color variable",
-                            placement="top",
-                        ),
                         class_="d-flex justify-content-between align-items-center",
                     ),
                     output_widget("plot_am"),
@@ -159,48 +148,49 @@ def nav_acertos_melhoras():
     ]
 
 # nav that show conversao de conhecimento related to df_cc
-# def nav_conversao_conhecimento():
-#     return [
-#         # TODO
-#         # explain ling and context
-#         ui.layout_sidebar(
-#             ui.panel_sidebar(
-#                 ui.input_radio_buttons(
-#                     id="radio_ordem_cc", 
-#                     label="Ordem das edições:", 
-#                     choices={'0': "Alfabética", '1': "Cronológica por resolução"},
-#                     selected='0',
-#                 ), 
-#                 ui.input_checkbox_group(
-#                     id="checkbox_areas_cc",
-#                     label="Escolher área:",
-#                     # list choices using dict_areas from 1-3 index
-#                     choices={chave: valor[0] for chave, valor in dict_areas.items() if list(dict_areas.keys()).index(chave) > 0}, 
-#                     selected=list(dict_areas.keys()),
-#                 ),
-#                 ui.input_checkbox_group(
-#                     id="checkbox_questoes_cc",
-#                     label="Escolher tipos de questões:",
-#                     choices=dict_questoes, 
-#                     selected=list(dict_questoes.keys()),
-#                 ),    
+def nav_conversao_conhecimento():
+    return [
+        # TODO
+        # explain ling and context
+        ui.layout_sidebar(
+            ui.panel_sidebar(
+                ui.input_radio_buttons(
+                    id="radio_ordem_cc", 
+                    label="Ordem das edições:", 
+                    choices={'0': "Alfabética", '1': "Cronológica por resolução"},
+                    selected='0',
+                ), 
+                ui.input_checkbox_group(
+                    id="checkbox_areas_cc",
+                    label="Escolher área:",
+                    # list choices using dict_areas from 1-3 index
+                    choices={chave: valor[0] for chave, valor in dict_areas.items() if list(dict_areas.keys()).index(chave) > 0}, 
+                    selected=list(dict_areas.keys()),
+                ),
+                ui.input_checkbox_group(
+                    id="checkbox_questoes_cc",
+                    label="Escolher tipos de questões:",
+                    choices=dict_questoes, 
+                    selected=list(dict_questoes.keys()),
+                ),    
 
-#             ),
-#             ui.panel_main(
-#                 ui.output_plot("plot_cc"),
-#                 # TODO
-#                 # add details like acertos de questoes que eu nao sabia
-#             ),
-#         ),
+            ),
+            ui.panel_main(
+                ui.output_plot("plot_cc"),
+                # TODO
+                # add details like acertos de questoes que eu nao sabia
+            ),
+        ),
 
-#     ]
+    ]
 
 app_ui = ui.page_fluid(
-    # TODO
-    # add title
-    ui.navset_card_tab(
-        ui.nav_panel("Análise quantidade de acertos e melhoras", nav_acertos_melhoras()),
-        #ui.nav_panel("Análise conversão de conhecimento", nav_conversao_conhecimento()),
+    ui.tags.html(
+        ui.h1({"style": "text-align: center;"}, "Análise de dados Simulados Enem"),
+        ui.navset_card_tab(
+            ui.nav_panel("Análise quantidade de acertos e melhoras", nav_acertos_melhoras()),
+            ui.nav_panel("Análise conversão de conhecimento (em desenvolvimento)", nav_conversao_conhecimento()),
+        ),
     ),
 )
 
@@ -221,8 +211,8 @@ def server(input, output, session):
                             ui.input_radio_buttons(
                                 "area_diff_acertos",
                                 label='Escolha a área:',
-                                choices=["media", *list(input.checkbox_areas_am())],
-                                selected="media",
+                                choices=["media_todas_selecionadas", *list(input.checkbox_areas_am())],
+                                selected="media_todas_selecionadas",
                                 inline=True,
                             ),
                             title="Mude a área a ser analisada",
@@ -369,7 +359,7 @@ def server(input, output, session):
         melhora_cols = [f'melhora_{area}' for area in lista_areas_selecionadas]
         
         df_melhora = pd.concat([df_final[['edicao']], df_final[melhora_cols]], axis=1)
-        df_melhora['melhora_media'] = df_melhora[melhora_cols].mean(axis=1)
+        df_melhora['melhora_media_todas_selecionadas'] = df_melhora[melhora_cols].mean(axis=1)
 
         yvar = f'melhora_{input.area_diff_acertos()}'
 
