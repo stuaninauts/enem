@@ -23,14 +23,20 @@ During my period of study to enter the university, I took numerous mock tests fo
 <a name="preview"></a>
 ## Preview
 
-Essay Grades:
+### Essay Grades:
 ![Essay grades](examples/am-redacao.png)
 
-Overall Performance Across All Subjects:
+### Overall Performance Across All Subjects:
 ![Overall performance](examples/am-analise.png)
 
-Comparing Overall Performance Between Two Attempts:
+### Comparing Overall Performance Between Two Attempts:
 ![Overall performance two attempts](examples/am-tentativas.png)
+
+### The mean number of questions that I knew for Maths:
+![Mean known for maths](examples/cc_matematica.png)
+
+### Identifying Patterns and Trends Across All Subjects:
+![Patterns and trends across all subjects](examples/cc_all.png)
 
 <!-- GETTING STARTED -->
 <a name="#getting-started"></a>
@@ -61,4 +67,5 @@ Or, if you want to run locally,
 <!-- ROADMAP -->
 <a name="roadmap"></a>
 ## Roadmap
-- [] Fix Análise de Conversão de Conhecimento tab 
+- [x] Fix Análise de Conversão de Conhecimento tab 
+- [ ] Add single discipline analysiss

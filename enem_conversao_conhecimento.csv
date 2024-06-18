@@ -1,4 +1,4 @@
-edicao,hum_s,hum_s_e,hum_ns,hum_ns_e,mat_s,mat_s_e,mat_ns,mat_ns_e,nat_s,nat_s_e,nat_ns,nat_ns_e,hum_ns_hist,hum_ns_geo,hum_ns_filo,hum_ns_socio,nat_ns_quim,nat_ns_fis,nat_ns_bio
+edicao,humanas_s,humanas_s_e,humanas_ns,humanas_ns_e,matematica_s,matematica_s_e,matematica_ns,matematica_ns_e,natureza_s,natureza_s_e,natureza_ns,natureza_ns_e,humanas_ns_hist,humanas_ns_geo,humanas_ns_filo,humanas_ns_socio,natureza_ns_quim,natureza_ns_fis,natureza_ns_bio
 ENEM 2017,38,7,7,6,39,2,6,4,30,1,15,8,,,,,,,
 ENEM 2010,33,6,12,9,42,4,3,1,34,5,11,10,,,,,,,
 ENEM 2018,41,6,4,3,40,3,5,2,37,4,8,4,,,,,4,2,2

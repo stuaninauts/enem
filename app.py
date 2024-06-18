@@ -23,13 +23,21 @@ df_am = pd.read_csv("enem_acertos_melhoras.csv")
 df_cc = pd.read_csv("enem_conversao_conhecimento.csv")
 
 dict_areas = {
-    # name          # beuaty name            # color
-    'linguagens':   ['Linguagens',          'tab:red'],
-    'humanas':      ['Ciências Humanas',    'tab:orange'],
-    'matematica':   ['Matemática',          'tab:purple'],
-    'natureza':     ['Ciências da Natureza','tab:green'],
+    # name          # beuaty name
+    'linguagens':   'Linguagens',
+    'humanas':      'Ciências Humanas',    
+    'matematica':   'Matemática',          
+    'natureza':     'Ciências da Natureza'
 }
 
+dict_questoes = {
+    's': 'Questões que eu sabia',
+    's_e':  'Questões que sabia e errei',
+    'ns': 'Questões que eu não sabia',
+    'ns_e': 'Questões que eu não sabia e errei',
+}
+
+# TODO: make single discipline analysis
 dict_hum_expandida = {
     'hist': 'História',
     'geo': 'Geografia',
@@ -43,19 +51,13 @@ dict_nat_expandida = {
     'bio': 'Biologia',
 }
 
-dict_questoes = {
-    's': 'Questões que eu sabia',
-    's_e':  'Questões que sabia e errei',
-    'ns': 'Questões que eu não sabia',
-    'ns_e': 'Questões que eu não sabia e errei',
-}
 
 # given color and factor, darken this color with this factor
-def darken_color(cor, factor):
-    color_rgb = mcolors.to_rgb(cor)
-    new_color_rgb = tuple(comp * (1 - factor) for comp in color_rgb)
-    new_color = mcolors.to_hex(new_color_rgb)
-    return new_color
+# def darken_color(cor, factor):
+#     color_rgb = mcolors.to_rgb(cor)
+#     new_color_rgb = tuple(comp * (1 - factor) for comp in color_rgb)
+#     new_color = mcolors.to_hex(new_color_rgb)
+#     return new_color
 
 # show the checkbox_areas_am if 'Escolher área(s)' is pressed in radio_areas
 # in acertos e melhora tab
@@ -66,7 +68,7 @@ def show_checkbox_areas():
             ui.input_checkbox_group(
                 id="checkbox_areas_am",
                 label="",
-                choices={chave: valor[0] for chave, valor in dict_areas.items()},
+                choices={chave: valor for chave, valor in dict_areas.items()},
                 selected=list(dict_areas.keys()),
             ),
             ui.hr(style="margin: 0;"),
@@ -97,7 +99,7 @@ def nav_acertos_melhoras():
                             ui.span("Cronológica por Resolução"),
                             "Para alguns simulados (não todos) tenho a ordem que eles foram realizados",
                             placement="right",
-                            id="tooltip_ordem_edicoes",)},
+                            id="tooltip_ordem_edicoes_am",)},
                     selected='0',
                 ),
                 ui.input_radio_buttons(
@@ -139,9 +141,7 @@ def nav_acertos_melhoras():
                     output_widget("plot_am"),
                     full_screen=True,
                 ),
-
                 ui.output_ui("secao_comparar_acertos"), # only shows up when comparar acertos is active
-
                 col_widths=[4, 8, 12],
             ),
         )
@@ -150,21 +150,23 @@ def nav_acertos_melhoras():
 # nav that show conversao de conhecimento related to df_cc
 def nav_conversao_conhecimento():
     return [
-        # TODO
-        # explain ling and context
         ui.layout_sidebar(
-            ui.panel_sidebar(
+            ui.sidebar(
                 ui.input_radio_buttons(
                     id="radio_ordem_cc", 
-                    label="Ordem das edições:", 
-                    choices={'0': "Alfabética", '1': "Cronológica por resolução"},
+                    label="Ordem das edições:",
+                    choices={'0': "Alfabética", '1': ui.tooltip(
+                            ui.span("Cronológica por Resolução"),
+                            "Para alguns simulados (não todos) tenho a ordem que eles foram realizados",
+                            placement="right",
+                            id="tooltip_ordem_edicoes_cc",)},
                     selected='0',
-                ), 
+                ),
                 ui.input_checkbox_group(
                     id="checkbox_areas_cc",
                     label="Escolher área:",
                     # list choices using dict_areas from 1-3 index
-                    choices={chave: valor[0] for chave, valor in dict_areas.items() if list(dict_areas.keys()).index(chave) > 0}, 
+                    choices={chave: valor for chave, valor in dict_areas.items() if list(dict_areas.keys()).index(chave) > 0}, 
                     selected=list(dict_areas.keys()),
                 ),
                 ui.input_checkbox_group(
@@ -173,15 +175,31 @@ def nav_conversao_conhecimento():
                     choices=dict_questoes, 
                     selected=list(dict_questoes.keys()),
                 ),    
-
             ),
-            ui.panel_main(
-                ui.output_plot("plot_cc"),
-                # TODO
-                # add details like acertos de questoes que eu nao sabia
+            ui.layout_columns(
+                ui.value_box( 
+                    "Simulados Realizados:", ui.output_ui("simulados_realizados_cc"), showcase=ICONS["book"]
+                ),
+                ui.value_box(
+                    "Média do Número do Tipo de Questão:", ui.output_ui("media_tipo_questao"), showcase=ICONS["calculator"]
+                ),
+            fill=False,
+            ),
+            ui.layout_columns(
+                ui.card(
+                    ui.card_header("Dados"), ui.output_data_frame("cc_table"), full_screen=True
+                ),
+                ui.card(
+                    ui.card_header(
+                        "Número de Questões vs Edição",
+                        class_="d-flex justify-content-between align-items-center",
+                    ),
+                    output_widget("plot_cc"),
+                    full_screen=True,
+                ),
+                col_widths=[4, 8],
             ),
         ),
-
     ]
 
 app_ui = ui.page_fluid(
@@ -189,12 +207,18 @@ app_ui = ui.page_fluid(
         ui.h1({"style": "text-align: center;"}, "Análise de dados Simulados Enem"),
         ui.navset_card_tab(
             ui.nav_panel("Análise quantidade de acertos e melhoras", nav_acertos_melhoras()),
-            ui.nav_panel("Análise conversão de conhecimento (em desenvolvimento)", nav_conversao_conhecimento()),
+            ui.nav_panel("Análise conversão de conhecimento", nav_conversao_conhecimento()),
         ),
     ),
 )
 
 def server(input, output, session):
+
+    # ======================================================================
+    # ANÁLISE QUANTIDADE DE ACERTOS E MELHORAS (enem_acertos_melhoras.csv)
+    # ======================================================================
+
+    # ui used for comparing attempts
     @render.ui
     def secao_comparar_acertos():
         # checkbox acertos checked
@@ -228,8 +252,8 @@ def server(input, output, session):
             ),    
         else:
             return ui.TagList()
-    # INFORMATION CARDS
-    # gets the data from the acertos e melhoras section
+
+    # gets the data from the acertos e melhoras (enem_acertos_melhoras.csv) section
     @reactive.calc
     def am_data():
         df_final = df_am
@@ -264,6 +288,7 @@ def server(input, output, session):
 
         return df_final
 
+    # INFORMATION CARDS
     @render.ui
     def simulados_realizados():
         return am_data().shape[0]
@@ -287,13 +312,15 @@ def server(input, output, session):
     def media_acertos_area():
         df_final = am_data()
         if input.radio_area() == '0': # redação was choosen
-            string_final = f'{int(df_final["redacao"].mean())} / 1000'
+            media = round(df_final["redacao"].mean())
+            string_final = f'{media} / 1000'
         else: # other areas were choosen
             string_final = '<div style="font-size: 1rem;">'            
             lista_areas_selecionadas = list(input.checkbox_areas_am())
             
             for area in lista_areas_selecionadas:
-                string_final += f'{dict_areas[area][0]}: <strong>{int(df_final[area].mean())}</strong><br>'
+                media = round(df_final[area].mean())
+                string_final += f'{dict_areas[area]}: <strong>{media}</strong><br>'
                 
         return ui.HTML(string_final)
 
@@ -307,9 +334,10 @@ def server(input, output, session):
             string_area = f'melhora_{area}'
             # necessary verification to avoid errors arising from the loading delay of the secao_comparar_acertos()
             if string_area in df_final.columns: 
-                string_final += f'{dict_areas[area][0]}: <strong>{int(df_final[string_area].mean())}</strong><br>'
+                media = round(df_final[string_area].mean())
+                string_final += f'{dict_areas[area]}: <strong>{media}</strong><br>'
             else:
-                string_final += f'{dict_areas[area][0]}: Dados não disponíveis<br>'
+                string_final += f'{dict_areas[area]}: Dados não disponíveis<br>'
         
         string_final += '</div>'
         
@@ -325,6 +353,7 @@ def server(input, output, session):
     def _():
         ui.update_navs("nav_radio_area", selected=input.radio_area())
 
+    # PLOTS
     # build the plot for Acertos e Melhoras tab
     @render_plotly
     def plot_am():
@@ -339,9 +368,9 @@ def server(input, output, session):
             segunda_tentativa = ''
             for area in input.checkbox_areas_am():
                 if input.checkbox_acertos():
-                    fig.add_scatter(x=df_final['edicao'], y=df_final[f'primeira_{area}'], mode='lines+markers', name=f"{dict_areas[area][0]} 1ª tentativa")
+                    fig.add_scatter(x=df_final['edicao'], y=df_final[f'primeira_{area}'], mode='lines+markers', name=f"{dict_areas[area]} 1ª tentativa")
                     segunda_tentativa = '2ª tentativa'
-                fig.add_scatter(x=df_final['edicao'], y=df_final[area], mode='lines+markers', name=f"{dict_areas[area][0]} {segunda_tentativa}")
+                fig.add_scatter(x=df_final['edicao'], y=df_final[area], mode='lines+markers', name=f"{dict_areas[area]} {segunda_tentativa}")
 
             fig.update_yaxes(range=[20, 45], tickvals=list(range(20, 46, 2)), title='Acertos')
             fig.update_xaxes(tickangle=55, title='Edição')
@@ -368,19 +397,45 @@ def server(input, output, session):
         
         return fig
 
+    # ======================================================================
+    # ANÁLISE CONVERSÃO DE CONHECIMENTO (enem_conversao_conhecimento.csv)
+    # ======================================================================
 
-
-    # build the plot for Conversão de Conhecimento tab
-    @output
-    @render.plot
-    def plot_cc():
-        fig, ax = plt.subplots()
-
+    @render.ui
+    def simulados_realizados_cc():
+        return cc_data().shape[0]
+    
+    @render.ui
+    def media_tipo_questao():
+        df_final = cc_data()
+        string_final = '<div style="font-size: 1rem;">'            
+        lista_areas_selecionadas = list(input.checkbox_areas_cc())
+        
+        tipos_questoes_selecionados = list(input.checkbox_questoes_cc())
+        for tipo_questao in tipos_questoes_selecionados:
+            colunas_tipo_questao = [col for col in df_final.columns if col.endswith('_' + tipo_questao)]
+            media = round(df_final[colunas_tipo_questao].stack().mean())
+            string_final += f'{dict_questoes[tipo_questao]}: <strong>{media}</strong><br>'
+            
+        string_final += '</div>'
+        
+        return ui.HTML(string_final)
+    
+    @render.data_frame
+    def cc_table():
+        return cc_data()
+    
+    @reactive.Calc
+    def cc_data():
         df_final = df_cc
         
-        df_final = df_final.set_index('edicao')
-        if input.radio_ordem_cc() == '0':
-            df_final = df_final.sort_index()
+        df_final = df_final.sort_values('edicao')
+
+        if input.radio_ordem_cc() == '1': # == 'Ordem cronológica por resolução
+            df_final = df_final.set_index('edicao')
+            # df_cc 'edicao' is sorted for this case
+            df_final = df_final.reindex(index=df_cc['edicao'])
+            df_final = df_final.reset_index()
 
         # select the wanted columns and drop nan values
         colunas_selecionadas = []
@@ -389,27 +444,37 @@ def server(input, output, session):
             area_prefix = area[:3] 
             # select the columns for the choosen areas 
             colunas_area = [coluna for coluna in df_final.columns if coluna.startswith(area_prefix)]
-            # remove rows with nan values
-            df_final = df_final.dropna(subset=colunas_area)
-
             for tipo_questao in list(input.checkbox_questoes_cc()):
                 # combine the selected areas with the type of question
-                # result the final columns to plot
-                colunas_selecionadas.append([coluna for coluna in colunas_area if coluna.endswith('_' + tipo_questao)])
-        x = df_final.index # result['edicao']
-        for coluna in colunas_selecionadas:
-            y = df_final[coluna]
-            ax.plot(x, y, label=dict_areas[area][0],marker='o')  
-            ax.legend(loc='upper left', bbox_to_anchor=(1, 1))
-    
-        ax.set_ylabel('questões')
-        ax.set_yticks(range(20, 46, 2)) # modify later min and max
-        ax.set_aspect(0.2)
+                colunas_selecionadas.extend([coluna for coluna in colunas_area if coluna.endswith('_' + tipo_questao)])
+        df_final = df_final[['edicao'] + colunas_selecionadas]
+        df_final = df_final.dropna(subset=colunas_selecionadas)
 
-        ax.tick_params(axis='x', labelrotation=55, bottom=True)
-        ax.grid(axis='both', color='0.75')
-        #ax.set_title('titulo')        
-        ax.set_xlabel('edicao')      
+
+        return df_final
+        
+    # build the plot for Conversão de Conhecimento tab
+    @render_plotly
+    def plot_cc():
+        df_final = cc_data()
+
+        # organize the data for the plot
+        data = []
+        for coluna in df_final.columns:
+            if coluna != 'edicao':
+                area, tipo_questao = coluna.split('_', 1) # separate area and tipo_questao from the columns names
+                label = f"{dict_areas[area]} - {dict_questoes[tipo_questao]}"
+                for edicao, valor in zip(df_final['edicao'], df_final[coluna]):
+                    data.append({'Edição': edicao, 'Valor': valor, 'Legenda': label})
+
+        # create plot using plotly
+        df_plotly = pd.DataFrame(data)
+        fig = px.line(df_plotly, x='Edição', y='Valor', color='Legenda', markers=True,
+                    labels={'Edição': 'Edição', 'Valor': 'Questões', 'Legenda': 'Área e Tipo de Questão'})
+
+        # adjust layout
+        fig.update_layout(xaxis_title='Edição', yaxis_title='Questões',
+                        legend_title='Área e Tipo de Questão', xaxis=dict(tickangle=55))
 
         return fig
 
